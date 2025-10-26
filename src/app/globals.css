@@ -1,0 +1,92 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Best Buy Brand Colors */
+    --brand-blue-primary: #003B64;
+    --brand-blue-alt: #0A4ABF;
+    --brand-yellow-primary: #FFF200;
+    
+    /* New Accent Colors (imagine that.) */
+    --accent-magenta: #E91E63;
+    --accent-teal: #00BCD4;
+    --accent-red: #F44336;
+    
+    /* Text Colors */
+    --text-primary: #1C252C;
+    --text-inverse: #FFFFFF;
+    
+    /* Surface Colors */
+    --surface-default: #FFFFFF;
+    --surface-alt: #F5F5F5;
+    --border-subtle: rgba(0, 0, 0, 0.08);
+    
+    /* Shadows */
+    --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+  }
+  
+  body {
+    font-family: "Avenir Next", Avenir, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    color: var(--text-primary);
+    background: var(--surface-default);
+  }
+}
+
+@layer components {
+  /* Best Buy Tag Badge */
+  .bestbuy-tag {
+    position: relative;
+    background: var(--brand-yellow-primary);
+    color: var(--text-primary);
+    padding: 0.25rem 0.75rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    
+    &::after {
+      content: '';
+      position: absolute;
+      right: -0.5rem;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0;
+      height: 0;
+      border-style: solid;
+      border-width: 0.75rem 0 0.75rem 0.5rem;
+      border-color: transparent transparent transparent var(--brand-yellow-primary);
+    }
+  }
+  
+  /* Agent Pulse Animation */
+  @keyframes pulse-glow {
+    0%, 100% {
+      box-shadow: 0 0 20px rgba(233, 30, 99, 0.2);
+    }
+    50% {
+      box-shadow: 0 0 30px rgba(0, 188, 212, 0.3);
+    }
+  }
+  
+  .agent-pulse {
+    animation: pulse-glow 2s ease-in-out infinite;
+  }
+  
+  /* Focus States for Accessibility */
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-bestbuy-blue focus:ring-offset-2;
+  }
+}
+
+@layer utilities {
+  /* Custom utilities for Best Buy design */
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .gradient-accent {
+    background: linear-gradient(135deg, var(--accent-magenta), var(--accent-teal));
+  }
+}
