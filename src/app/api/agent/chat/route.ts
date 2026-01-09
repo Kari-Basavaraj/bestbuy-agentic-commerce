@@ -2,20 +2,31 @@ import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 import { AgentContext } from '@/types/agent'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazy-load OpenAI client to prevent build-time errors
+// Updated: 2026-01-09
+let openaiClient: OpenAI | null = null
+
+function getOpenAIClient(): OpenAI | null {
+  if (!process.env.OPENAI_API_KEY) return null
+  if (!openaiClient) {
+    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+  }
+  return openaiClient
+}
 
 export async function POST(request: NextRequest) {
   try {
     const { message, context, conversationHistory } = await request.json()
 
+    // Get OpenAI client (lazy-loaded)
+    const openai = getOpenAIClient()
+
     // If OpenAI is not configured, use fallback responses
-    if (!process.env.OPENAI_API_KEY) {
+    if (!openai) {
       const updatedContext = await extractContextFromMessage(message, context || {})
       const fallbackResponse = generateFallbackResponse(message, updatedContext, conversationHistory)
-      
-      return NextResponse.json({ 
+
+      return NextResponse.json({
         response: fallbackResponse,
         context: updatedContext,
         shouldGenerateRecommendations: shouldTriggerRecommendations(message, updatedContext)
