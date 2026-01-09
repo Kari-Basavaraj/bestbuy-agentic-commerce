@@ -1,4 +1,5 @@
 import { AgentContext, SolutionBundle } from '@/types/agent'
+import mockDataService from './mock-data.service'
 
 export class AgentService {
   private apiKey: string
@@ -11,19 +12,9 @@ export class AgentService {
 
   async generateRecommendations(context: AgentContext): Promise<SolutionBundle[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/agent/recommend`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(context),
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to generate recommendations')
-      }
-
-      return await response.json()
+      // Use mock data for now instead of API
+      const recommendations = await mockDataService.getRecommendations(context)
+      return recommendations
     } catch (error) {
       console.error('Agent recommendation error:', error)
       return this.getFallbackRecommendations(context)
@@ -113,6 +104,7 @@ export class AgentService {
   async processUserInput(input: string): Promise<AgentContext> {
     // Parse user input to extract context
     const context: AgentContext = {}
+    const lowerInput = input.toLowerCase()
 
     // Extract budget
     const budgetMatch = input.match(/\$?(\d+(?:,\d{3})*(?:\.\d{2})?)/g)
@@ -121,21 +113,36 @@ export class AgentService {
     }
 
     // Extract urgency
-    if (input.toLowerCase().includes('today')) {
+    if (lowerInput.includes('today') || lowerInput.includes('asap')) {
       context.urgency = 'today'
-    } else if (input.toLowerCase().includes('tomorrow')) {
+    } else if (lowerInput.includes('tomorrow')) {
       context.urgency = 'tomorrow'
-    } else if (input.toLowerCase().includes('week')) {
+    } else if (lowerInput.includes('week')) {
       context.urgency = 'this-week'
     }
 
     // Extract use case
-    if (input.toLowerCase().includes('video') || input.toLowerCase().includes('edit')) {
+    if (lowerInput.includes('video') || lowerInput.includes('edit') || lowerInput.includes('creative')) {
       context.useCase = 'video-editing'
-    } else if (input.toLowerCase().includes('game') || input.toLowerCase().includes('gaming')) {
+    } else if (lowerInput.includes('game') || lowerInput.includes('gaming')) {
       context.useCase = 'gaming'
-    } else if (input.toLowerCase().includes('work') || input.toLowerCase().includes('office')) {
+    } else if (lowerInput.includes('work') || lowerInput.includes('office') || lowerInput.includes('business')) {
       context.useCase = 'work'
+    } else if (lowerInput.includes('movie') || lowerInput.includes('tv') || lowerInput.includes('entertainment')) {
+      context.useCase = 'entertainment'
+    }
+
+    // Extract category
+    if (lowerInput.includes('laptop') || lowerInput.includes('macbook') || lowerInput.includes('notebook')) {
+      context.category = 'laptops'
+    } else if (lowerInput.includes('tv') || lowerInput.includes('television') || lowerInput.includes('oled')) {
+      context.category = 'tvs'
+    } else if (lowerInput.includes('desktop') || lowerInput.includes('pc') || lowerInput.includes('computer')) {
+      context.category = 'desktops'
+    } else if (lowerInput.includes('gaming')) {
+      context.category = 'gaming'
+    } else if (lowerInput.includes('camera') || lowerInput.includes('photography')) {
+      context.category = 'cameras'
     }
 
     return context

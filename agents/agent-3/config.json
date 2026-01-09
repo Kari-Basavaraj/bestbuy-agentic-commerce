@@ -1,0 +1,35 @@
+{
+  "agent_id": "agent-3",
+  "specialization": "code_quality_and_maintainability",
+  "focus_areas": [
+    "code_standards",
+    "technical_debt",
+    "maintainability_index",
+    "duplicate_code",
+    "test_coverage"
+  ],
+  "scan_targets": [
+    "src/components/**/*.{ts,tsx}",
+    "src/data/**/*.{ts}",
+    "docs/**/*.md"
+  ],
+  "output_file": "agent-3-quality-report.json",
+  "analysis_depth": "deep",
+  "priority_patterns": [
+    "TODO|FIXME|HACK",
+    "console\.(log|error|warn)",
+    "magic numbers",
+    "deeply_nested_code",
+    "large_functions",
+    "duplicate_imports",
+    "unused_variables",
+    "type_errors"
+  ],
+  "quality_metrics": [
+    "cyclomatic_complexity",
+    "function_length",
+    "file_length",
+    "dependency_coupling",
+    "cohesion_metrics"
+  ]
+}

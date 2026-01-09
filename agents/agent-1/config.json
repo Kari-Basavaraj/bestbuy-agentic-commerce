@@ -1,0 +1,26 @@
+{
+  "agent_id": "agent-1",
+  "specialization": "architecture_and_patterns",
+  "focus_areas": [
+    "component_hierarchy",
+    "state_management",
+    "api_patterns",
+    "routing_structure",
+    "data_flow"
+  ],
+  "scan_targets": [
+    "src/app/**/*.{ts,tsx}",
+    "src/contexts/**/*.{ts,tsx}",
+    "src/types/**/*.{ts}"
+  ],
+  "output_file": "agent-1-architecture-report.json",
+  "analysis_depth": "deep",
+  "priority_patterns": [
+    "export.*function",
+    "const.*=.*{",
+    "interface.*{",
+    "type.*=",
+    "useState|useEffect|useContext",
+    "async.*await"
+  ]
+}

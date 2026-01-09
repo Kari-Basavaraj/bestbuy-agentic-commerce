@@ -2,14 +2,16 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useAgent } from '@/contexts/AgentContext'
-import SolutionCard from '@/components/commerce/SolutionCard'
+import ChatMessage from './ChatMessage'
 import agentService from '@/services/agent.service'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
-import { Minimize2, Maximize2, X, MessageCircle, Send, User, Bot, Sparkles } from 'lucide-react'
+import { Minimize2, Maximize2, X, MessageCircle, Send, User, Bot, Sparkles, Mic, MicOff, Lightbulb, TrendingUp, Clock, ShoppingCart, Package, Zap } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import type { SolutionBundle } from '@/types/agent'
 
 const quickPrompts = [
   { id: '1', text: "I need a laptop for video editing under $2000", icon: "💻", category: 'laptop' },
@@ -40,7 +42,12 @@ export default function FloatingChatWindow() {
   const [input, setInput] = useState('')
   const [isMinimized, setIsMinimized] = useState(false)
   const [isHovering, setIsHovering] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
+  const [isTyping, setIsTyping] = useState(false)
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [showSuggestions, setShowSuggestions] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const router = useRouter()
 
   // Auto-scroll to latest message
   useEffect(() => {
@@ -70,6 +77,55 @@ export default function FloatingChatWindow() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isOpen, closeAgent])
 
+  // Generate context-aware suggestions
+  useEffect(() => {
+    if (context && context.useCase) {
+      const newSuggestions = generateSuggestions(context)
+      setSuggestions(newSuggestions)
+      setShowSuggestions(newSuggestions.length > 0)
+    } else {
+      setShowSuggestions(false)
+    }
+  }, [context])
+
+  // Typing indicator
+  useEffect(() => {
+    if (isLoading) {
+      setIsTyping(true)
+      const typingInterval = setInterval(() => {
+        // Typing animation handled in UI
+      }, 500)
+
+      return () => {
+        clearInterval(typingInterval)
+        setIsTyping(false)
+      }
+    }
+  }, [isLoading])
+
+  // Generate smart suggestions based on context
+  const generateSuggestions = (ctx: any): string[] => {
+    const suggestions: string[] = []
+
+    if (ctx.useCase === 'gaming') {
+      suggestions.push('What refresh rate do you need?', 'What games do you play?', 'Do you need peripherals?')
+    } else if (ctx.useCase === 'video-editing') {
+      suggestions.push('What camera do you use?', 'What resolution do you edit in?', 'Do you need color accuracy?')
+    } else if (ctx.useCase === 'work') {
+      suggestions.push('What software do you use?', 'Do you travel often?', 'Do you need multiple monitors?')
+    } else if (ctx.category === 'laptops') {
+      suggestions.push('What screen size do you prefer?', 'How much storage do you need?', 'Battery life important?')
+    } else if (ctx.category === 'tvs') {
+      suggestions.push('What room size?', 'Do you stream 4K content?', 'Sound system needed?')
+    } else if (ctx.budget && ctx.budget < 1000) {
+      suggestions.push('Are you open to refurbished?', 'Would you consider previous generation?')
+    } else if (ctx.budget && ctx.budget > 2000) {
+      suggestions.push('Want premium features?', 'Need professional-grade performance?')
+    }
+
+    return suggestions.slice(0, 3) // Limit to 3 suggestions
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!input.trim() || isLoading) return
@@ -80,53 +136,150 @@ export default function FloatingChatWindow() {
     setLoading(true)
 
     try {
-      // Get conversation history for context
-      const conversationHistory = messages.map(msg => ({
-        role: msg.role,
-        content: msg.content
-      }))
+      // Process user input to extract context
+      const updatedContext = await agentService.processUserInput(userMessage)
+      updateContext(updatedContext)
 
-      // Call the chat API for intelligent response and context extraction
-      const response = await fetch(`${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/agent/chat`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          message: userMessage,
-          context,
-          conversationHistory
+      // Analyze intent and generate appropriate response
+      const lowerMessage = userMessage.toLowerCase()
+      const isGreeting = lowerMessage.includes('hi') || lowerMessage.includes('hello') || lowerMessage.includes('hey')
+      const askingForHelp = lowerMessage.includes('help') || lowerMessage.includes('need') || lowerMessage.includes('looking for')
+      const askingAboutBudget = lowerMessage.includes('budget') || lowerMessage.includes('cost') || lowerMessage.includes('price')
+      const askingAboutCategory = lowerMessage.includes('laptop') || lowerMessage.includes('tv') || lowerMessage.includes('gaming') || lowerMessage.includes('camera')
+      
+      // Generate multimodal response based on intent
+      if (isGreeting) {
+        addMessage({
+          role: 'assistant',
+          content: '👋 Hi! I\'m your Tech Pro from Best Buy. I\'m here to help you find the perfect tech solution!',
+          cards: [
+            {
+              id: 'welcome-card',
+              type: 'info',
+              title: 'How Can I Help You Today?',
+              subtitle: 'I can assist with complete solutions including:',
+              highlights: [
+                'Finding the right products for your needs',
+                'Setting up complete bundles with services',
+                'Installation and protection plans',
+                'Comparing different options',
+                'Finding the best deals and member benefits'
+              ],
+              cta: {
+                label: 'Get Started',
+                action: 'get-started'
+              }
+            }
+          ],
+          actions: [
+            { id: 'laptop', label: '💻 Laptops', action: 'filter-products', data: { category: 'laptops' } },
+            { id: 'tv', label: '📺 TVs & Home Theater', action: 'filter-products', data: { category: 'tvs' } },
+            { id: 'gaming', label: '🎮 Gaming', action: 'filter-products', data: { category: 'gaming' } },
+            { id: 'office', label: '💼 Home Office', action: 'filter-products', data: { category: 'office' } }
+          ],
         })
-      })
-
-      if (!response.ok) {
-        throw new Error('Chat API request failed')
-      }
-
-      const data = await response.json()
-
-      // Update context from API response
-      updateContext(data.context)
-
-      addMessage({
-        role: 'assistant',
-        content: data.response,
-        isCard: true
-      })
-
-      // Generate recommendations if API indicates we should
-      if (data.shouldGenerateRecommendations) {
-        const bundles = await agentService.generateRecommendations(data.context)
-
+      } else if (askingAboutBudget) {
+        addMessage({
+          role: 'assistant',
+          content: '💰 Let\'s work within your budget to find the best value!',
+          cards: [
+            {
+              id: 'budget-card',
+              type: 'info',
+              title: 'Select Your Budget Range',
+              subtitle: 'I\'ll find solutions that fit your price range',
+              content: 'Choose a budget range and I\'ll show you the best options with maximum value, including any current deals or member savings.'
+            }
+          ],
+          actions: [
+            { id: 'budget-1', label: 'Under $500', action: 'change-budget', data: { budget: 500 } },
+            { id: 'budget-2', label: '$500 - $1000', action: 'change-budget', data: { budget: 1000 } },
+            { id: 'budget-3', label: '$1000 - $2000', action: 'change-budget', data: { budget: 2000 } },
+            { id: 'budget-4', label: '$2000+', action: 'change-budget', data: { budget: 3000 } }
+          ],
+        })
+      } else if (askingAboutCategory || (updatedContext.category && askingForHelp)) {
+        // Generate recommendations with multimodal cards
+        const bundles = await agentService.generateRecommendations(updatedContext)
+        
         if (bundles.length > 0) {
           setBundles(bundles)
-          setTimeout(() => {
-            addMessage({
-              role: 'assistant',
-              content: `I've prepared ${bundles.length} complete solution${bundles.length > 1 ? 's' : ''} for you below. Each includes hardware, services, installation, and protection. Take a look! 👇`,
-              isCard: true
+          
+          // Create recommendation cards
+          const recommendationCards = bundles.slice(0, 2).map((bundle, index) => ({
+            id: `rec-${bundle.id}`,
+            type: 'recommendation' as const,
+            title: bundle.name,
+            subtitle: `${bundle.products.length} products • ${bundle.services.length} services`,
+            content: bundle.description,
+            pricing: {
+              current: bundle.totalPrice.oneTime,
+              isMonthly: bundle.totalPrice.monthly > 0
+            },
+            highlights: [
+              bundle.whyThisPick || 'Perfect for your needs',
+              `Ready in ${bundle.fulfillment[0]?.available || 'store'}`,
+              bundle.savingsAmount ? `Save $${bundle.savingsAmount}` : 'Best value'
+            ],
+            badge: index === 0 ? 'Top Pick' : 'Great Value',
+            badgeColor: index === 0 ? 'yellow' : undefined,
+            cta: {
+              label: 'View Details',
+              action: 'view-bundle',
+              variant: 'default' as const
+            },
+            metadata: { bundleId: bundle.id }
+          }))
+          
+          addMessage({
+            role: 'assistant',
+            content: `🎯 Based on your needs, I've found ${bundles.length} perfect solutions for you!`,
+            cards: recommendationCards,
             })
-          }, 1000)
+          
+          // Add the full bundle details in a separate message
+          setTimeout(() => {
+            bundles.forEach((bundle, index) => {
+              addMessage({
+                role: 'assistant',
+                content: index === 0 ? '📦 Here are the complete solution details:' : '',
+                bundle
+              })
+            })
+          }, 500)
+        }
+      } else {
+        // Default contextual response
+        const hasContext = !!(updatedContext.budget || updatedContext.useCase || updatedContext.category)
+        
+        if (!hasContext) {
+          addMessage({
+            role: 'assistant',
+            content: 'I\'d love to help you find the perfect solution! To get started, could you tell me:',
+            cards: [
+              {
+                id: 'context-gathering',
+                type: 'info',
+                title: 'Let\'s Find Your Perfect Setup',
+                subtitle: 'A few quick questions to personalize your recommendations',
+                highlights: [
+                  'What will you primarily use it for?',
+                  'What\'s your budget range?',
+                  'When do you need it by?',
+                  'Any specific features you need?'
+                ]
+              }
+            ],
+            actions: [
+              { id: 'work', label: '💼 Work', action: 'ask-question', data: { question: 'I need a setup for work from home' } },
+              { id: 'gaming', label: '🎮 Gaming', action: 'ask-question', data: { question: 'I want a gaming setup' } },
+              { id: 'creative', label: '🎨 Creative', action: 'ask-question', data: { question: 'I do video editing and design' } },
+              { id: 'general', label: '🏠 General Use', action: 'ask-question', data: { question: 'I need something for everyday use' } }
+            ],
+            })
+        } else {
+          // Generate contextual follow-up
+          generateRecommendations()
         }
       }
     } catch (error) {
@@ -158,8 +311,7 @@ export default function FloatingChatWindow() {
 
       addMessage({
         role: 'assistant',
-        content: response,
-        isCard: true
+        content: response
       })
 
       // Generate recommendations if we have enough context
@@ -171,8 +323,7 @@ export default function FloatingChatWindow() {
           setTimeout(() => {
             addMessage({
               role: 'assistant',
-              content: `I've prepared ${bundles.length} complete solution${bundles.length > 1 ? 's' : ''} for you below. Each includes hardware, services, installation, and protection. Take a look! 👇`,
-              isCard: true
+              content: `I've prepared ${bundles.length} complete solution${bundles.length > 1 ? 's' : ''} for you below. Each includes hardware, services, installation, and protection. Take a look! 👇`
             })
           }, 1000)
         }
@@ -183,14 +334,122 @@ export default function FloatingChatWindow() {
   }
 
   const handlePromptClick = (promptText: string) => {
-    // Directly submit the prompt instead of just setting input
-    addMessage({ role: 'user', content: promptText })
-    setLoading(true)
-
-    // Trigger the same submission logic
+    setInput(promptText)
     setTimeout(() => {
       handleSubmit({ preventDefault: () => {} } as React.FormEvent)
     }, 100)
+  }
+
+  // Handle card actions from multimodal messages
+  const handleActionClick = (action: any) => {
+    console.log('Action clicked:', action)
+    
+    switch (action.action) {
+      case 'ask-question':
+        setInput(action.data?.question || '')
+        break
+      case 'filter-products':
+        updateContext({ ...context, category: action.data?.category })
+        generateRecommendations()
+        break
+      case 'change-budget':
+        updateContext({ ...context, budget: action.data?.budget })
+        generateRecommendations()
+        break
+      case 'view-product':
+        router.push(`/products/${action.data?.sku}`)
+        break
+      case 'compare-products':
+        router.push(`/compare?items=${action.data?.skus?.join(',')}`)
+        break
+      case 'schedule-installation':
+        router.push('/services/installation')
+        break
+      case 'talk-to-expert':
+        window.open('tel:1-888-BESTBUY', '_self')
+        break
+      default:
+        console.log('Unhandled action:', action.action)
+    }
+  }
+
+  // Handle bundle actions
+  const handleBundleAction = (bundle: SolutionBundle, action: string) => {
+    console.log('Bundle action:', action, bundle)
+    
+    switch (action) {
+      case 'add-to-cart':
+        // Add all bundle items to cart
+        bundle.products.forEach(product => {
+          // Add to cart logic
+          console.log('Adding to cart:', product)
+        })
+        bundle.services.forEach(service => {
+          // Add services to cart
+          console.log('Adding service:', service)
+        })
+        
+        // Show confirmation
+        addMessage({
+          role: 'assistant',
+          content: '✅ Great choice! I\'ve added your complete solution to the cart.',
+          cards: [
+            {
+              id: 'cart-confirmation',
+              type: 'info',
+              title: 'Added to Cart',
+              content: `${bundle.name} has been added to your cart with all products, services, and protection plans.`,
+              highlights: [
+                `${bundle.products.length} products`,
+                `${bundle.services.length} services & protection plans`,
+                `Total: ${new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(bundle.totalPrice.oneTime)}`
+              ],
+              cta: {
+                label: 'View Cart',
+                action: 'view-cart'
+              }
+            }
+          ]
+        })
+        break
+        
+      case 'view-details':
+        router.push(`/solutions/${bundle.id}`)
+        break
+        
+      case 'customize':
+        // Open customization modal
+        console.log('Customize bundle:', bundle)
+        break
+        
+      default:
+        console.log('Unhandled bundle action:', action)
+    }
+  }
+
+  // Generate recommendations helper
+  const generateRecommendations = async () => {
+    setLoading(true)
+    try {
+      const bundles = await agentService.generateRecommendations(context)
+      if (bundles.length > 0) {
+        setBundles(bundles)
+        
+        // Add message with bundles
+        const bundleMessages = bundles.map((bundle, index) => ({
+          id: `bundle-${Date.now()}-${index}`,
+          role: 'assistant' as const,
+          content: index === 0 ? '🎯 Based on your needs, here are my top recommendations:' : '',
+          bundle,
+        }))
+        
+        bundleMessages.forEach(msg => addMessage(msg))
+      }
+    } catch (error) {
+      console.error('Error generating recommendations:', error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (!isOpen) {
@@ -286,37 +545,15 @@ export default function FloatingChatWindow() {
 
               {/* Chat Messages */}
               {messages.map((message) => (
-                <div
+                <ChatMessage
                   key={message.id}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-                >
-                  <div className="flex items-start gap-2 max-w-[80%]">
-                    {message.role === 'assistant' && (
-                      <div className="w-8 h-8 bg-bestbuy-blue rounded-full flex items-center justify-center flex-shrink-0">
-                        <Bot className="w-5 h-5 text-white" />
-                      </div>
-                    )}
-                    <div
-                      className={`rounded-2xl px-4 py-3 ${
-                        message.role === 'user'
-                          ? 'bg-bestbuy-blue text-white ml-auto'
-                          : message.isCard
-                          ? 'bg-white border border-gray-200 shadow-sm'
-                          : 'bg-gray-100 text-gray-900'
-                      }`}
-                    >
-                      <p className="whitespace-pre-line text-sm">{message.content}</p>
-                    </div>
-                    {message.role === 'user' && (
-                      <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center flex-shrink-0">
-                        <User className="w-5 h-5 text-gray-600" />
-                      </div>
-                    )}
-                  </div>
-                </div>
+                  message={message}
+                  onActionClick={handleActionClick}
+                  onBundleAction={handleBundleAction}
+                />
               ))}
 
-              {/* Loading Indicator */}
+              {/* Enhanced Loading/Typing Indicator */}
               {isLoading && (
                 <div className="flex justify-start">
                   <div className="flex items-start gap-2">
@@ -324,26 +561,45 @@ export default function FloatingChatWindow() {
                       <Bot className="w-5 h-5 text-white" />
                     </div>
                     <div className="bg-white border border-gray-200 rounded-2xl px-4 py-3 shadow-sm">
-                      <div className="flex space-x-2">
-                        <div className="w-2 h-2 bg-bestbuy-blue rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <div className="w-2 h-2 bg-bestbuy-blue rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <div className="w-2 h-2 bg-bestbuy-blue rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      <div className="flex items-center gap-3">
+                        <div className="flex space-x-1">
+                          <div className={`w-2 h-2 bg-bestbuy-blue rounded-full transition-all duration-300 ${isTyping ? 'animate-pulse' : ''}`} />
+                          <div className={`w-2 h-2 bg-bestbuy-blue rounded-full transition-all duration-300 ${isTyping ? 'animate-pulse' : ''}`} style={{ animationDelay: '150ms' }} />
+                          <div className={`w-2 h-2 bg-bestbuy-blue rounded-full transition-all duration-300 ${isTyping ? 'animate-pulse' : ''}`} style={{ animationDelay: '300ms' }} />
+                        </div>
+                        <span className="text-xs text-gray-500 italic">Thinking...</span>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Solution Bundles */}
-              {currentBundles.length > 0 && (
-                <div className="space-y-4">
-                  {currentBundles.map((bundle) => (
-                    <div key={bundle.id} className="scale-75 origin-top-left">
-                      <SolutionCard bundle={bundle} />
+              {/* Smart Suggestions */}
+              {showSuggestions && !isLoading && suggestions.length > 0 && (
+                <div className="flex justify-start">
+                  <div className="flex items-start gap-2 max-w-[80%]">
+                    <div className="w-8 h-8 bg-bestbuy-blue rounded-full flex items-center justify-center">
+                      <Lightbulb className="w-4 h-4 text-white" />
                     </div>
-                  ))}
+                    <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3 shadow-sm">
+                      <p className="text-xs font-medium text-blue-900 mb-2">Quick questions:</p>
+                      <div className="space-y-1">
+                        {suggestions.map((suggestion, index) => (
+                          <button
+                            key={index}
+                            onClick={() => setInput(suggestion)}
+                            className="block w-full text-left text-xs text-blue-700 hover:text-blue-900 hover:bg-blue-100 px-2 py-1 rounded transition-colors"
+                          >
+                            {suggestion}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
+
+              {/* Solution bundles are now rendered within ChatMessage components */}
 
               <div ref={messagesEndRef} />
             </CardContent>

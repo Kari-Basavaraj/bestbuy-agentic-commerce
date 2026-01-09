@@ -1,0 +1,34 @@
+{
+  "agent_id": "agent-2",
+  "specialization": "security_and_performance",
+  "focus_areas": [
+    "security_vulnerabilities",
+    "performance_bottlenecks",
+    "memory_leaks",
+    "api_security",
+    "input_validation"
+  ],
+  "scan_targets": [
+    "src/services/**/*.{ts,tsx}",
+    "src/app/api/**/*.{ts,tsx}",
+    "src/lib/**/*.{ts}"
+  ],
+  "output_file": "agent-2-security-performance-report.json",
+  "analysis_depth": "deep",
+  "priority_patterns": [
+    "fetch|axios",
+    "localStorage|sessionStorage",
+    "eval|Function",
+    "innerHTML|dangerouslySetInnerHTML",
+    "process\.env|API_KEY",
+    "setTimeout|setInterval",
+    "async.*await"
+  ],
+  "security_checks": [
+    "hardcoded_secrets",
+    "xss_vectors",
+    "sql_injection_patterns",
+    "authentication_flaws",
+    "data_exposure"
+  ]
+}

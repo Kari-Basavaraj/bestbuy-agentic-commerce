@@ -4,10 +4,10 @@
 
 @layer base {
   :root {
-    /* Best Buy Brand Colors */
-    --brand-blue-primary: #003B64;
-    --brand-blue-alt: #0A4ABF;
-    --brand-yellow-primary: #FFF200;
+    /* Best Buy Official Brand Colors - Updated: 2026-01-09 */
+    --brand-blue-primary: #0046BE;   /* Best Buy Blue (official) */
+    --brand-blue-dark: #003B64;      /* Best Buy Blue Dark (secondary) */
+    --brand-yellow-primary: #FFE000; /* Best Buy Yellow (official) */
     
     /* New Accent Colors (imagine that.) */
     --accent-magenta: #E91E63;

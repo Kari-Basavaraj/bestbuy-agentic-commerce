@@ -1,0 +1,31 @@
+# Netlify configuration for Best Buy Agentic Commerce
+# Updated: 2026-01-09
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+# Netlify Next.js plugin handles the rest
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+# Environment variable placeholders (set these in Netlify dashboard)
+[build.environment]
+  NODE_VERSION = "20"
+  NPM_FLAGS = "--legacy-peer-deps"
+
+# Headers for security
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    X-XSS-Protection = "1; mode=block"
+    Referrer-Policy = "strict-origin-when-cross-origin"
+
+# Redirect www to non-www (optional, uncomment if needed)
+# [[redirects]]
+#   from = "https://www.yourdomain.com/*"
+#   to = "https://yourdomain.com/:splat"
+#   status = 301
+#   force = true

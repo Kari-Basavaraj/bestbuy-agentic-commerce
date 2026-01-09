@@ -48,3 +48,6 @@ next-env.d.ts
 
 # Task Master
 .taskmaster
+
+# Local Netlify folder
+.netlify
